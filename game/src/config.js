@@ -26,22 +26,22 @@ export const MAX_HEALTH = 100;
 export const MAX_WANTED = 3;
 
 export const PALETTE = {
-  bg: '#1e293b',         // Bright slate background
-  road: '#475569',       // Clear asphalt gray
-  roadLine: '#f8fafc',   // White road lane lines
-  sidewalk: '#94a3b8',   // Light sidewalk gray
-  building: [            // Vibrant colorful building palette
-    '#cbd5e1', '#e2e8f0', '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#34d399', '#facc15', '#fb923c'
+  bg: '#0f172a',         // Deep ocean/night base
+  road: '#cbd5e1',       // Light gray asphalt roads
+  roadLine: '#ffffff',   // White road lane lines
+  sidewalk: '#f1f5f9',   // Light bright sidewalks
+  building: [            // Vibrant colorful building palette for individual buildings
+    '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#34d399', '#facc15', '#fb923c', '#60a5fa', '#a78bfa', '#f87171'
   ],
   player: '#ef4444',     // Bright red criminal car
   sports: '#10b981',     // Green sports car
-  police: '#0f172a',     // Police car dark base
+  police: '#000000',     // Police car black-and-white base
   taxi: '#f59e0b',       // Yellow taxi
-  pedestrian: '#f8fafc', // Bright pedestrian
+  pedestrian: '#0f172a', // High-contrast pedestrian dark silhouette
   cash: '#22c55e',       // Cash pickup green
   marker: '#facc15',     // Mission waypoint yellow
   text: '#ffffff',       // White text
-  hudBg: 'rgba(15, 23, 42, 0.9)',
+  hudBg: 'rgba(15, 23, 42, 0.95)',
 };
 
 export const FONT = 'system-ui, -apple-system, sans-serif';
