@@ -1,16 +1,17 @@
-// City generation, world layout, entities (player, traffic, police, pedestrians, cash),
+// City generation, world layout, entities (player, traffic, police, pedestrians, cash, parked cars),
 // physics, and collision logic for Harbor Heat. Logically pure with no DOM dependencies.
 
 import { WORLD, BLOCK_SIZE, ROAD_WIDTH, PLAYER_CAR, MAX_HEALTH, MAX_WANTED } from './config.js';
+import { createVehicleManager, VEHICLE_MODELS } from './vehicles.js';
 
 export function createWorld(random) {
   const buildings = [];
-  const traffic = [];
   const pedestrians = [];
   const police = [];
   const cashPickups = [];
+  const vehicleManager = createVehicleManager(random);
 
-  // Generate city grid (buildings and blocks)
+  // Generate city grid (buildings and blocks with beach in south)
   const cols = Math.floor(WORLD.width / (BLOCK_SIZE + ROAD_WIDTH));
   const rows = Math.floor(WORLD.height / (BLOCK_SIZE + ROAD_WIDTH));
 
@@ -21,7 +22,9 @@ export function createWorld(random) {
       const bWidth = BLOCK_SIZE;
       const bHeight = BLOCK_SIZE;
 
-      // Add a building complex inside the block with sidewalks around
+      // South rows are beach/ocean area
+      if (r >= rows - 2) continue;
+
       const margin = 20;
       const colorIndex = Math.floor(random() * 6);
       buildings.push({
@@ -42,10 +45,10 @@ export function createWorld(random) {
     health: MAX_HEALTH,
     money: 500,
     wanted: 0,
-    activeMission: 0, // 0: None, 1: Taxi, 2: Hot Wheels, 3: Heat, 4: The Drop, 5: Debt Paid
+    inVehicle: true,
+    vehicleModel: VEHICLE_MODELS[0],
+    activeMission: 0,
     missionProgress: 0,
-    targetX: 0,
-    targetY: 0,
   };
 
   function reset() {
@@ -56,43 +59,35 @@ export function createWorld(random) {
     player.health = MAX_HEALTH;
     player.money = 500;
     player.wanted = 0;
+    player.inVehicle = true;
+    player.vehicleModel = VEHICLE_MODELS[0];
     player.activeMission = 0;
     player.missionProgress = 0;
 
-    traffic.length = 0;
     pedestrians.length = 0;
     police.length = 0;
     cashPickups.length = 0;
 
-    // Spawn initial traffic cars
-    for (let i = 0; i < 20; i++) {
-      traffic.push({
+    vehicleManager.spawnTraffic();
+    vehicleManager.spawnParkedCars();
+
+    // Spawn pedestrians on sidewalks
+    for (let i = 0; i < 40; i++) {
+      pedestrians.push({
         x: ROAD_WIDTH + random() * (WORLD.width - ROAD_WIDTH * 2),
         y: ROAD_WIDTH + random() * (WORLD.height - ROAD_WIDTH * 2),
-        angle: random() > 0.5 ? 0 : Math.PI / 2,
-        speed: 100 + random() * 150,
-        type: Math.floor(random() * 3), // 0: sedan, 1: taxi, 2: sports
-        width: 48,
-        height: 26,
+        vx: (random() - 0.5) * 25,
+        vy: (random() - 0.5) * 25,
+        panicked: false,
       });
     }
 
-    // Spawn pedestrians
-    for (let i = 0; i < 30; i++) {
-      pedestrians.push({
-        x: random() * WORLD.width,
-        y: random() * WORLD.height,
-        vx: (random() - 0.5) * 30,
-        vy: (random() - 0.5) * 30,
-      });
-    }
-
-    // Spawn initial cash drops around the city
-    for (let i = 0; i < 15; i++) {
+    // Spawn initial cash drops
+    for (let i = 0; i < 20; i++) {
       cashPickups.push({
         x: ROAD_WIDTH + random() * (WORLD.width - ROAD_WIDTH * 2),
         y: ROAD_WIDTH + random() * (WORLD.height - ROAD_WIDTH * 2),
-        value: 100 + Math.floor(random() * 400),
+        value: 150 + Math.floor(random() * 350),
       });
     }
   }
@@ -114,19 +109,36 @@ export function createWorld(random) {
   }
 
   function step(dt, controls, harmless) {
-    // Controls: { steer: -1..1, throttle: -1..1, brake: boolean, handbrake: boolean }
     if (!harmless) {
-      // Player movement physics
-      if (controls.throttle > 0) {
-        player.speed = Math.min(PLAYER_CAR.maxSpeed, player.speed + PLAYER_CAR.accel * dt);
-      } else if (controls.throttle < 0) {
-        player.speed = Math.max(-PLAYER_CAR.reverseSpeed, player.speed - PLAYER_CAR.accel * dt);
-      } else {
-        if (player.speed > 0) {
-          player.speed = Math.max(0, player.speed - PLAYER_CAR.friction * dt);
-        } else if (player.speed < 0) {
-          player.speed = Math.min(0, player.speed + PLAYER_CAR.friction * dt);
+      // Enter / Exit vehicle toggle (E key / action)
+      if (controls.interact && !player.inVehicle) {
+        // Check if near a parked car
+        for (const car of vehicleManager.parkedCars) {
+          const dx = car.x - player.x;
+          const dy = car.y - player.y;
+          if (dx * dx + dy * dy < 60 * 60) {
+            player.inVehicle = true;
+            player.vehicleModel = car.model;
+            player.x = car.x;
+            player.y = car.y;
+            player.wanted = Math.min(3, player.wanted + 1); // Stealing is a crime!
+            break;
+          }
         }
+      }
+
+      // Player driving physics
+      const maxSpeed = player.inVehicle ? player.vehicleModel.maxSpeed : 180;
+      const accel = player.inVehicle ? player.vehicleModel.accel : 200;
+      const turnSpeed = player.inVehicle ? player.vehicleModel.turnSpeed : 4.0;
+
+      if (controls.throttle > 0) {
+        player.speed = Math.min(maxSpeed, player.speed + accel * dt);
+      } else if (controls.throttle < 0) {
+        player.speed = Math.max(-120, player.speed - accel * dt);
+      } else {
+        if (player.speed > 0) player.speed = Math.max(0, player.speed - PLAYER_CAR.friction * dt);
+        else if (player.speed < 0) player.speed = Math.min(0, player.speed + PLAYER_CAR.friction * dt);
       }
 
       if (controls.brake) {
@@ -134,15 +146,13 @@ export function createWorld(random) {
         else if (player.speed < 0) player.speed = Math.min(0, player.speed + PLAYER_CAR.brake * dt);
       }
 
-      if (Math.abs(player.speed) > 10) {
-        player.angle += controls.steer * PLAYER_CAR.turnSpeed * (player.speed / PLAYER_CAR.maxSpeed) * dt;
+      if (Math.abs(player.speed) > 5) {
+        player.angle += controls.steer * turnSpeed * (player.speed / maxSpeed) * dt;
       }
 
-      // Calculate next position
       const nx = player.x + Math.cos(player.angle) * player.speed * dt;
       const ny = player.y + Math.sin(player.angle) * player.speed * dt;
 
-      // Boundary check & building collision check
       const clampedX = Math.max(50, Math.min(WORLD.width - 50, nx));
       const clampedY = Math.max(50, Math.min(WORLD.height - 50, ny));
 
@@ -150,56 +160,46 @@ export function createWorld(random) {
         player.x = clampedX;
         player.y = clampedY;
       } else {
-        // Hit building -> bounce/slow down and take damage
         player.speed *= -0.3;
-        player.health = Math.max(0, player.health - 2);
+        player.health = Math.max(0, player.health - 3);
       }
 
-      // Check cash pickups collection
+      // Update traffic
+      vehicleManager.updateTraffic(dt, buildings, player);
+
+      // Check cash pickups
       for (let i = cashPickups.length - 1; i >= 0; i--) {
         const cash = cashPickups[i];
         const dx = cash.x - player.x;
         const dy = cash.y - player.y;
-        if (dx * dx + dy * dy < 40 * 40) {
+        if (dx * dx + dy * dy < 45 * 45) {
           player.money += cash.value;
           cashPickups.splice(i, 1);
-          // Respawn cash elsewhere
           cashPickups.push({
             x: ROAD_WIDTH + random() * (WORLD.width - ROAD_WIDTH * 2),
             y: ROAD_WIDTH + random() * (WORLD.height - ROAD_WIDTH * 2),
-            value: 100 + Math.floor(random() * 400),
+            value: 150 + Math.floor(random() * 350),
           });
         }
       }
 
-      // Move traffic
-      for (const t of traffic) {
-        t.x += Math.cos(t.angle) * t.speed * dt;
-        t.y += Math.sin(t.angle) * t.speed * dt;
-        // Wrap around world
-        if (t.x < 0) t.x = WORLD.width;
-        if (t.x > WORLD.width) t.x = 0;
-        if (t.y < 0) t.y = WORLD.height;
-        if (t.y > WORLD.height) t.y = 0;
-
-        // Check collision with player
-        const pdx = t.x - player.x;
-        const pdy = t.y - player.y;
-        if (pdx * pdx + pdy * pdy < 40 * 40 && Math.abs(player.speed) > 100) {
-          player.health = Math.max(0, player.health - 5);
-          player.wanted = Math.min(MAX_WANTED, player.wanted + 1);
-        }
-      }
-
-      // Move pedestrians
+      // Pedestrians movement and panic
       for (const p of pedestrians) {
+        if (player.wanted > 0 || Math.abs(player.speed) > 200) {
+          const pdx = p.x - player.x;
+          const pdy = p.y - player.y;
+          if (pdx * pdx + pdy * pdy < 120 * 120) {
+            p.panicked = true;
+            p.vx = (pdx > 0 ? 1 : -1) * 80;
+            p.vy = (pdy > 0 ? 1 : -1) * 80;
+          }
+        }
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         if (p.x < 0 || p.x > WORLD.width) p.vx *= -1;
         if (p.y < 0 || p.y > WORLD.height) p.vy *= -1;
       }
     } else {
-      // Harmless backdrop movement for title screen
       player.x += 60 * dt;
       if (player.x > WORLD.width) player.x = 0;
     }
@@ -229,7 +229,15 @@ export function createWorld(random) {
   }
 
   return {
-    state: { player, buildings, traffic, pedestrians, police, cashPickups },
+    state: {
+      player,
+      buildings,
+      traffic: vehicleManager.traffic,
+      parkedCars: vehicleManager.parkedCars,
+      pedestrians,
+      police,
+      cashPickups,
+    },
     reset,
     step,
     getStateData,
