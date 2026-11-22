@@ -8,6 +8,9 @@ export const WORLD = {
 export const BLOCK_SIZE = 600; // Size of a city block
 export const ROAD_WIDTH = 120; // Width of streets separating blocks
 
+/** The simulation's fixed step, in seconds: 60 updates a second. */
+export const STEP = 1 / 60;
+
 export const PLAYER_CAR = {
   width: 52,
   height: 28,
