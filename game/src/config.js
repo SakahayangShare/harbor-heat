@@ -6,14 +6,14 @@ export const WORLD = {
 };
 
 export const BLOCK_SIZE = 600; // Size of a city block
-export const ROAD_WIDTH = 120; // Width of streets separating blocks
+export const ROAD_WIDTH = 140; // Width of streets separating blocks
 
 /** The simulation's fixed step, in seconds: 60 updates a second. */
 export const STEP = 1 / 60;
 
 export const PLAYER_CAR = {
-  width: 52,
-  height: 28,
+  width: 56,
+  height: 30,
   maxSpeed: 480,
   reverseSpeed: 160,
   accel: 320,
@@ -26,20 +26,22 @@ export const MAX_HEALTH = 100;
 export const MAX_WANTED = 3;
 
 export const PALETTE = {
-  bg: '#11151c',
-  road: '#212631',
-  roadLine: '#3e4859',
-  sidewalk: '#2d3340',
-  building: ['#4b5563', '#374151', '#1f2937', '#6b7280', '#475569', '#334155'],
-  player: '#ef4444',     // Red criminal car
-  sports: '#10b981',     // Green sports car (Hot Wheels)
-  police: '#3b82f6',     // Blue/Red police car
+  bg: '#1e293b',         // Bright slate background
+  road: '#475569',       // Clear asphalt gray
+  roadLine: '#f8fafc',   // White road lane lines
+  sidewalk: '#94a3b8',   // Light sidewalk gray
+  building: [            // Vibrant colorful building palette
+    '#cbd5e1', '#e2e8f0', '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#34d399', '#facc15', '#fb923c'
+  ],
+  player: '#ef4444',     // Bright red criminal car
+  sports: '#10b981',     // Green sports car
+  police: '#0f172a',     // Police car dark base
   taxi: '#f59e0b',       // Yellow taxi
-  pedestrian: '#cbd5e1',
-  cash: '#22c55e',       // Cash pickup
-  marker: '#fbbf24',     // Mission waypoint yellow
-  text: '#f1f5f9',
-  hudBg: 'rgba(15, 23, 42, 0.85)',
+  pedestrian: '#f8fafc', // Bright pedestrian
+  cash: '#22c55e',       // Cash pickup green
+  marker: '#facc15',     // Mission waypoint yellow
+  text: '#ffffff',       // White text
+  hudBg: 'rgba(15, 23, 42, 0.9)',
 };
 
 export const FONT = 'system-ui, -apple-system, sans-serif';
